@@ -53,10 +53,10 @@ int main() {
         }
         meminfo.close();
 
-        // Calculate used memory in KiB (considering Available)
+        // Calculate used memory in KB (considering Available)
         long usedMemory = totalMemory - availableMemory;
 
-        // Convert KiB to GB
+        // Convert KB to GB
         double totalGB = static_cast<double>(totalMemory) * 1024 / (1000 * 1000 * 1000); // Decimal conversion for total memory
         double usedGB = static_cast<double>(usedMemory) * 1024 / (1000 * 1000 * 1000);  // Decimal conversion for used memory
 
@@ -120,15 +120,23 @@ int main() {
 
         // Output the top 5 memory-consuming programs
         cout << "\nTop 5 memory-consuming programs:" << endl;
-        for (int i = 0; i < min(5, static_cast<int>(processes.size())); ++i) {
-            cout << "PID: " << processes[i].pid << " | Command: " << processes[i].command
-                 << " | Memory Usage: " << processes[i].memoryUsage / 1024.0 << " MB" << endl;
+        ofstream outFile("processes_ids.txt");
+        if (outFile.is_open()) {
+            for (int i = 0; i < min(5, static_cast<int>(processes.size())); ++i) {
+                cout << "PID: " << processes[i].pid << " | Command: " << processes[i].command
+                     << " | Memory Usage: " << processes[i].memoryUsage / 1024.0 << " MB" << endl;
+                // Save the PID to the file
+                outFile << processes[i].pid << endl; 
+            }
+            outFile.close();
+        } else {
+            cout << "Unable to open file for writing." << endl;
         }
-        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
 
     } else {
         cout << "Unable to open /proc/meminfo." << endl;
-        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
     }
 
     return 0;
