@@ -14,7 +14,7 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, string* userp) {
     return totalSize;
 }
 
-// Function to update the connection status on a virtual pin (V1)
+// Function to update the connection status on a virtual pin (V0)
 void updateConnectionStatus(bool connected, const string& auth) {
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -22,7 +22,7 @@ void updateConnectionStatus(bool connected, const string& auth) {
         return;
     }
 
-    string url = "https://blynk.cloud/external/api/update?token=" + auth + "&pin=V1&value=" + (connected ? "1" : "0");
+    string url = "https://blynk.cloud/external/api/update?token=" + auth + "&pin=V0&value=" + (connected ? "1" : "0");
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
@@ -38,7 +38,31 @@ void updateConnectionStatus(bool connected, const string& auth) {
     curl_easy_cleanup(curl);
 }
 
-// Function to check connection and update the status pin
+// Function to send data to virtual pin V1
+void sendDataToVirtualPin(const string& auth, int value) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        cerr << "Failed to initialize CURL." << endl;
+        return;
+    }
+
+    string url = "https://blynk.cloud/external/api/update?token=" + auth + "&pin=V1&value=" + to_string(value);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        cerr << "Data sending error: " << curl_easy_strerror(res) << endl;
+    } else {
+        cout << "Data sent to virtual pin V0 successfully." << endl;
+    }
+
+    curl_easy_cleanup(curl);
+}
+
+// Function to check connection and update the status
 bool checkBlynkLogin(const string& auth) {
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -60,40 +84,16 @@ bool checkBlynkLogin(const string& auth) {
 
     if (res == CURLE_OK) {
         cout << "Response from server: " << response << endl;
-        loginSuccessful = (response.find("Invalid token") == string::npos); // Check for "Invalid token" in response
+        // Check if there is "Invalid token" in response
+        loginSuccessful = (response.find("Invalid token") == string::npos); 
     } else {
         cerr << "Connection error: " << curl_easy_strerror(res) << endl;
     }
 
     curl_easy_cleanup(curl);
 
-    // Update the connection status pin based on login success
     updateConnectionStatus(loginSuccessful, auth);
     return loginSuccessful;
-}
-
-// Function to send data to virtual pin V0
-void sendDataToVirtualPin(const string& auth, int value) {
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        cerr << "Failed to initialize CURL." << endl;
-        return;
-    }
-
-    string url = "https://blynk.cloud/external/api/update?token=" + auth + "&pin=V0&value=" + to_string(value);
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-
-    CURLcode res = curl_easy_perform(curl);
-
-    if (res != CURLE_OK) {
-        cerr << "Data sending error: " << curl_easy_strerror(res) << endl;
-    } else {
-        cout << "Data sent to virtual pin V0 successfully." << endl;
-    }
-
-    curl_easy_cleanup(curl);
 }
 
 int main() {
@@ -121,7 +121,7 @@ int main() {
         loginStatus.close();
     }
 
-    // Send data to virtual pin V0 after successful login
+    // Send data to virtual pin V1 after successful login
     sendDataToVirtualPin(auth, 1);
 
     cout << "Blynk login successful.\n" << endl;

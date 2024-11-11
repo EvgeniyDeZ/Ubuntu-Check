@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "iostream": "cpp",
+        "string": "cpp",
+        "format": "cpp",
+        "thread": "cpp",
+        "*.tcc": "cpp",
+        "unordered_map": "cpp",
+        "string_view": "cpp",
+        "array": "cpp"
+    }
+}
