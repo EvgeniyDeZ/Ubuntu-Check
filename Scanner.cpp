@@ -18,6 +18,7 @@ struct ProcessInfo {
     string command;
 };
 
+// Get a procces memory usage in KiB
 long getMemoryUsageKB(int pid) {
     string statusFile = "/proc/" + to_string(pid) + "/status";
     ifstream file(statusFile);
