@@ -218,7 +218,6 @@ int main() {
                 running = false;
             }
 
-            // Check every 5 seconds
             this_thread::sleep_for(chrono::seconds(5));
         }
     });

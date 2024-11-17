@@ -95,37 +95,3 @@ bool checkBlynkLogin(const string& auth) {
     updateConnectionStatus(loginSuccessful, auth);
     return loginSuccessful;
 }
-
-int main() {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-
-    string auth;
-    bool loginSuccessful = false;
-
-    // Prompt the user to enter the auth token
-    do {
-        cout << "Enter your Blynk auth token: ";
-        cin >> auth;
-        cout << "\n";
-
-        loginSuccessful = checkBlynkLogin(auth);
-        if (!loginSuccessful) {
-            cerr << "Invalid token or failed to connect. Please try again.\n" << endl;
-        }
-    } while (!loginSuccessful);
-
-    // Write login status and auth token to file if login is successful
-    ofstream loginStatus("login_status.txt");
-    if (loginStatus.is_open()) {
-        loginStatus << "logged_in\n" << auth;
-        loginStatus.close();
-    }
-
-    // Send data to virtual pin V1 after successful login
-    sendDataToVirtualPin(auth, 1);
-
-    cout << "Blynk login successful.\n" << endl;
-
-    curl_global_cleanup();
-    return 0;
-}
