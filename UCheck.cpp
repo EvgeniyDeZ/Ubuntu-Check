@@ -2,14 +2,11 @@
 #include <thread>
 #include <chrono>
 #include <string>
-#include <cstdio>
-#include <memory>
-#include <array>
-#include <atomic>
 #include <fstream>
 #include <cstdlib>
 #include <curl/curl.h>
 #include <vector>
+#include <atomic>
 
 using namespace std;
 
