@@ -1,7 +1,5 @@
 #include <iostream>
 #include <string>
-#include <thread>
-#include <chrono>
 #include <fstream>
 #include <curl/curl.h>
 

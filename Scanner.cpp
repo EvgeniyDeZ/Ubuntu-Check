@@ -3,9 +3,6 @@
 #include <string>
 #include <iomanip>
 #include <dirent.h>
-#include <unistd.h>
-#include <cstring>
-#include <cstdio>
 #include <cstdlib>
 #include <vector>
 #include <algorithm>
