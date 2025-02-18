@@ -1,22 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <iomanip>
-#include <dirent.h>
-#include <unistd.h>
-#include <cstdlib>
-#include <vector>
-#include <algorithm>
+#include "../include/constants.h"
 
-using namespace std;
-
-struct ProcessInfo {
-    int pid;
-    long memoryUsage;
-    string command;
-};
-
-// Get a procces memory usage in KiB
+// Get a process memory usage in KiB
 long getMemoryUsageKB(int pid) {
     string statusFile = "/proc/" + to_string(pid) + "/status";
     ifstream file(statusFile);
@@ -36,48 +20,52 @@ long getMemoryUsageKB(int pid) {
     return memUsage;
 }
 
-int main() {
-    ifstream meminfo("/proc/meminfo");
-    string line;
-    long totalMemory = 0, availableMemory = 0;
+void scannerThread(atomic<bool>& running) {
+    ofstream clearFile("output/processes_ids.txt", ios::trunc);
+    if (!clearFile.is_open()) {
+        cerr << "Unable to clear processes_ids.txt." << endl;
+    }
+    clearFile.close();
 
-    if (meminfo.is_open()) {
-        while (getline(meminfo, line)) {
-            if (line.find("MemTotal:") == 0) {
-                totalMemory = stol(line.substr(line.find_first_of("0123456789"))); // Total memory in KiB
+    while (running) {
+        ifstream meminfo("/proc/meminfo");
+        string line;
+        long totalMemory = 0, availableMemory = 0;
+
+        if (meminfo.is_open()) {
+            while (getline(meminfo, line)) {
+                if (line.find("MemTotal:") == 0) {
+                    totalMemory = stol(line.substr(line.find_first_of("0123456789"))); // Загальна пам'ять
+                }
+                if (line.find("MemAvailable:") == 0) {
+                    availableMemory = stol(line.substr(line.find_first_of("0123456789"))); // Доступна пам'ять
+                }
             }
-            if (line.find("MemAvailable:") == 0) {
-                availableMemory = stol(line.substr(line.find_first_of("0123456789"))); // Available memory in KiB
-            }
+            meminfo.close();
+        } else {
+            cerr << "Unable to open /proc/meminfo." << endl;
+            return;
         }
-        meminfo.close();
 
-        // Calculate used memory in KB (considering Available)
         long usedMemory = totalMemory - availableMemory;
-
-        // Convert KB to GB
-        double totalGB = static_cast<double>(totalMemory) * 1024 / (1000 * 1000 * 1000); // Decimal conversion for total memory
-        double usedGB = static_cast<double>(usedMemory) * 1024 / (1000 * 1000 * 1000);  // Decimal conversion for used memory
-
-        // Calculate the percentage of used memory
+        double totalGB = static_cast<double>(totalMemory) * 1024 / (1000 * 1000 * 1000); // GB
+        double usedGB = static_cast<double>(usedMemory) * 1024 / (1000 * 1000 * 1000);  // GB
         double percentageUsed = (usedGB / totalGB) * 100;
 
-        // Output the results
         cout << fixed << setprecision(1);
         cout << "Total Memory: " << totalGB << " GB" << endl;
         cout << "Used Memory: " << usedGB << " GB" << endl;
         cout << "Memory Usage Percentage: " << percentageUsed << "%" << endl;
         cout << " " << endl;
 
-        // Check for programs using more than 50% of RAM
-        long thresholdMemory = totalMemory / 2;
+        long thresholdMemory = totalMemory / DIVISOR;
         vector<ProcessInfo> processes;
 
         DIR* procDir = opendir("/proc");
         if (procDir) {
             struct dirent* entry;
             while ((entry = readdir(procDir)) != nullptr) {
-                if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) { // Check if the directory name is a number (PID)
+                if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {
                     int pid = atoi(entry->d_name);
                     long memUsage = getMemoryUsageKB(pid);
                     if (memUsage > 0) {
@@ -95,12 +83,10 @@ int main() {
             closedir(procDir);
         }
 
-        // Sort processes by memory usage in descending order
         sort(processes.begin(), processes.end(), [](const ProcessInfo& a, const ProcessInfo& b) {
             return a.memoryUsage > b.memoryUsage;
         });
 
-        // Output the program using more than 50% of RAM, if any
         bool found = false;
         for (const auto& proc : processes) {
             if (proc.memoryUsage > thresholdMemory) {
@@ -117,26 +103,23 @@ int main() {
             cout << "No program is using more than 50% of RAM." << endl;
         }
 
-        // Output the top 5 memory-consuming programs
         cout << "\nTop 5 memory-consuming programs:" << endl;
-        ofstream outFile("processes_ids.txt");
+        ofstream outFile("output/processes_ids.txt");
         if (outFile.is_open()) {
             for (int i = 0; i < min(5, static_cast<int>(processes.size())); ++i) {
                 cout << "PID: " << processes[i].pid << " | Command: " << processes[i].command
                      << " | Memory Usage: " << processes[i].memoryUsage / 1024.0 << " MB" << endl;
-                // Save the PID to the file
                 outFile << processes[i].pid << endl; 
             }
             outFile.close();
         } else {
-            cout << "Unable to open file for writing." << endl;
+            cerr << "Unable to open file for writing." << endl;
         }
-    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
 
-    } else {
-        cout << "Unable to open /proc/meminfo." << endl;
-    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+
+        for (int i = 0; i < SCANNER_TIME && running; ++i) { 
+            this_thread::sleep_for(chrono::seconds(1));
+        }        
     }
-
-    return 0;
 }
