@@ -1,20 +1,34 @@
 #include "../include/constants.h"
 #include "../src/BlynkHandler.cpp"
-#include "../src/ProcessManager.cpp"
+
+// Function to read top process IDs from file
+vector<string> readProcessIDs() {
+    ifstream file("output/processes_ids.txt");
+    vector<string> ids;
+    string id;
+    while (getline(file, id) && ids.size() < MAX_PROCESS_IDS) {
+        ids.push_back(id);
+    }
+    file.close();
+    return ids;
+}
 
 void readingThread(atomic<bool>& running, const string& auth) {
     while (running) {
         vector<string> processIDs = readProcessIDs();
-        
+
         for (const auto& pid : processIDs) {
-            if (!running) break;
-            writeToBlynk(auth, "V2", pid);            
-            this_thread::sleep_for(chrono::seconds(UPDATE_TIME));
-        }
+            if (!running) return;
+            writeToBlynk(auth, "V2", pid);
+
+            unique_lock<mutex> lk(cv_m);
+            cv.wait_for(lk, chrono::seconds(UPDATE_TIME), [&] { return !running; });
+        }        
     }
 }
 
-void commandThread(atomic<bool>& running, const string& auth) {
+
+void commandThread(atomic<bool>& running, const string& auth, thread& readingProcess, thread& scannerProcess) {
     writeToBlynk(auth, "V3", "0");
     writeToBlynk(auth, "V4", to_string(DEFAULT_SLIDER));
 
@@ -26,6 +40,27 @@ void commandThread(atomic<bool>& running, const string& auth) {
             if (!currentPID.empty()) {
                 system(("kill " + currentPID).c_str());
                 writeToBlynk(auth, "V3", "0");
+
+                // Stop reading thread before restarting
+                running = false;
+                // Wake readingProcess and scannerProcess immediately
+                cv.notify_all();  
+                
+                if (scannerProcess.joinable()) {
+                    scannerProcess.join();
+                }
+                if (readingProcess.joinable()) {
+                    readingProcess.join();
+                }
+                
+                running = true;
+                
+                // Delete the output file
+                remove("output/processes_ids.txt");
+                
+                // Restart scanner and reading threads after termination
+                scannerProcess = thread(scannerThread, ref(running), ref(auth), ref(readingProcess));  
+                readingProcess = thread(readingThread, ref(running), ref(auth));
             }
         }
 
@@ -39,5 +74,19 @@ void commandThread(atomic<bool>& running, const string& auth) {
             system("shutdown now");
             running = false;
         }
+    }
+}
+
+
+// Thread for exit program
+void inputThread(atomic<bool>& running) {
+    string input;
+    while (running) {
+        cin >> input;
+        if (input == "Exit") {
+            running = false;
+            cv.notify_all();  // Wake up all sleeping threads
+            break;
+        } 
     }
 }
