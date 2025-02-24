@@ -20,7 +20,7 @@ long getMemoryUsageKB(int pid) {
     return memUsage;
 }
 
-void scannerThread(atomic<bool>& running) {
+void scannerThread(atomic<bool>& running, const string& auth, thread& readingProcess) {
     ofstream clearFile("output/processes_ids.txt", ios::trunc);
     if (!clearFile.is_open()) {
         cerr << "Unable to clear processes_ids.txt." << endl;
@@ -90,7 +90,7 @@ void scannerThread(atomic<bool>& running) {
         bool found = false;
         for (const auto& proc : processes) {
             if (proc.memoryUsage > thresholdMemory) {
-                cout << "Program using more than 50% of RAM:" << endl;
+                cout << "Program using more than " << PERCENT << "% of RAM:" << endl;
                 cout << "PID: " << proc.pid << endl;
                 cout << "Command: " << proc.command << endl;
                 cout << "Memory Usage: " << proc.memoryUsage / 1024.0 << " MB" << endl;
@@ -100,7 +100,7 @@ void scannerThread(atomic<bool>& running) {
         }
 
         if (!found) {
-            cout << "No program is using more than 50% of RAM." << endl;
+            cout << "No program is using more than " << PERCENT << "% of RAM." << endl;
         }
 
         cout << "\nTop 5 memory-consuming programs:" << endl;
@@ -120,6 +120,21 @@ void scannerThread(atomic<bool>& running) {
 
         for (int i = 0; i < SCANNER_TIME && running; ++i) { 
             this_thread::sleep_for(chrono::seconds(1));
-        }        
+        }  
+
+        if (running) {
+            running = false;
+            cv.notify_all();
+
+            if (readingProcess.joinable()) {
+                readingProcess.join();
+            }
+
+            running = true;  
+
+            remove("output/processes_ids.txt");
+
+            readingProcess = thread(readingThread, ref(running), ref(auth));
+        }     
     }
 }

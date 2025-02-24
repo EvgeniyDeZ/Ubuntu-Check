@@ -1,6 +1,5 @@
 #include "include/constants.h"
 #include "src/Commands.cpp"
-#include "src/ExitInput.cpp"
 #include "src/Login.cpp"
 #include "src/Scanner.cpp"
 
@@ -21,13 +20,13 @@ int main() {
     // Running main Threads
     thread inputProcess(inputThread, ref(running));
     thread readingProcess(readingThread, ref(running), ref(auth));
-    thread commandProcess(commandThread, ref(running), cref(auth));
-    thread scannerProcess(scannerThread, ref(running));    
+    thread scannerProcess(scannerThread, ref(running), ref(auth), ref(readingProcess));    
+    thread commandProcess(commandThread, ref(running), ref(auth), ref(readingProcess), ref(scannerProcess));
 
     inputProcess.join();
+    scannerProcess.join();
     readingProcess.join();
     commandProcess.join();
-    scannerProcess.join();
 
     return 0;
 }
