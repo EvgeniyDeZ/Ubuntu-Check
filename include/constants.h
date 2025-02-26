@@ -21,7 +21,6 @@ using namespace std;
 
 // Global atomic flag for thread control
 extern atomic<bool> running;
-atomic<bool> restartReading{false};
 
 condition_variable cv;
 mutex cv_m;

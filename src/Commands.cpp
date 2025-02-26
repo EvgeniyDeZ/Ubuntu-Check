@@ -14,6 +14,12 @@ vector<string> readProcessIDs() {
 }
 
 void readingThread(atomic<bool>& running, const string& auth) {
+    ofstream clearFile("output/processes_ids.txt", ios::trunc);
+    if (!clearFile.is_open()) {
+        cerr << "Unable to clear processes_ids.txt." << endl;
+    }
+    clearFile.close();
+    
     while (running) {
         vector<string> processIDs = readProcessIDs();
 
