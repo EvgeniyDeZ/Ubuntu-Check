@@ -21,12 +21,6 @@ long getMemoryUsageKB(int pid) {
 }
 
 void scannerThread(atomic<bool>& running, const string& auth, thread& readingProcess) {
-    ofstream clearFile("output/processes_ids.txt", ios::trunc);
-    if (!clearFile.is_open()) {
-        cerr << "Unable to clear processes_ids.txt." << endl;
-    }
-    clearFile.close();
-
     while (running) {
         ifstream meminfo("/proc/meminfo");
         string line;
